@@ -3,6 +3,38 @@
 {% block content %}
 <div class="index">
     <div class="title"><h1>SearXNG</h1></div>
+    <div id="profile-switcher-container" class="hide_if_nojs" style="margin: 0.5rem 0 1rem 0;">
+      <label for="profile-switcher" style="margin-right: 0.5rem;">Profile:</label>
+      <select id="profile-switcher">
+        <option value="" selected>Choose profile…</option>
+      </select>
+      <a href="{{ url_for('preferences') }}#profiles" style="margin-left: 0.75rem;">Manage</a>
+    </div>
     {% include 'simple/simple_search.html' %}
 </div>
+<script>
+(function(){
+  try {
+    const key = 'searxng_profiles';
+    const select = document.getElementById('profile-switcher');
+    if (!select) return;
+    const profiles = JSON.parse(localStorage.getItem(key) || '[]');
+    profiles.forEach((p, i) => {
+      if (!p || typeof p.url !== 'string' || typeof p.name !== 'string') return;
+      const opt = document.createElement('option');
+      opt.value = p.url;
+      opt.textContent = p.name;
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', (e) => {
+      const url = e.target.value;
+      if (!url) return;
+      if (!/^https?:\/\//i.test(url)) { alert('Invalid profile URL.'); return; }
+      window.location.href = url;
+    });
+    const container = document.getElementById('profile-switcher-container');
+    if (container && profiles.length === 0) { container.style.display = 'none'; }
+  } catch (e) {}
+})();
+</script>
 {% endblock %}

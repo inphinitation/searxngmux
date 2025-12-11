@@ -57,3 +57,79 @@
   {{- _('Insert copied preferences hash (without URL) to restore') -}}:{{- '' -}}
 </h4>{{- '' -}}
 <input type="text" id="pref-hash-input" name="preferences" placeholder="{{- _('Preferences hash') -}}">{{- '' -}}
+
+
+<hr>
+<h3 id="profiles">Profiles</h3>
+<p class="small_font">Save named profiles that redirect to absolute URLs with your SearXNG preferences. Use the instant-apply link below or paste any https URL.</p>
+<div id="profile-add" class="profile-add">
+  <label for="profile-name" style="display:block; margin-top:0.5rem;">Profile name</label>
+  <input type="text" id="profile-name" placeholder="My Profile" style="width:100%; max-width:28rem;">
+  <label for="profile-url" style="display:block; margin-top:0.5rem;">Profile URL</label>
+  <input type="url" id="profile-url" style="width:100%; max-width:48rem;" value="{{ url_for('preferences', _external=True) }}?preferences={{ preferences_url_params|e }}">
+  <button id="profile-save" type="button" class="button" style="margin-top:0.5rem;">Save profile</button>
+</div>
+<div id="profile-list-container" style="margin-top:1rem;">
+  <h4>Saved profiles</h4>
+  <ul id="profile-list" style="list-style:none; padding-left:0;"></ul>
+</div>
+<script>
+(function(){
+  const key = 'searxng_profiles';
+  const listEl = document.getElementById('profile-list');
+  const containerEl = document.getElementById('profile-list-container');
+  const nameEl = document.getElementById('profile-name');
+  const urlEl = document.getElementById('profile-url');
+  const saveBtn = document.getElementById('profile-save');
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); }
+    catch(e){ return []; }
+  }
+  function save(profiles){ localStorage.setItem(key, JSON.stringify(profiles)); }
+  function render(){
+    const profiles = load();
+    listEl.innerHTML = '';
+    if (!profiles.length) {
+      containerEl.style.display = 'none';
+      return;
+    }
+    containerEl.style.display = '';
+    profiles.forEach((p, idx)=>{
+      if (!p || typeof p.name !== 'string' || typeof p.url !== 'string') return;
+      const li = document.createElement('li');
+      li.style.margin = '0.25rem 0';
+      const a = document.createElement('a');
+      a.href = p.url; a.textContent = p.name; a.rel = 'nofollow noopener';
+      a.addEventListener('click', (ev)=>{
+        if (!/^https?:\/\//i.test(p.url)) { ev.preventDefault(); alert('Invalid profile URL.'); }
+      });
+      const del = document.createElement('button');
+      del.textContent = 'Delete';
+      del.className = 'button';
+      del.style.marginLeft = '0.5rem';
+      del.addEventListener('click', ()=>{
+        const arr = load();
+        arr.splice(idx, 1);
+        save(arr); render();
+      });
+      li.appendChild(a); li.appendChild(del);
+      listEl.appendChild(li);
+    });
+  }
+  function onSave(){
+    const name = (nameEl.value || '').trim();
+    const url = (urlEl.value || '').trim();
+    if (!name) { alert('Please enter a profile name.'); return; }
+    if (!/^https?:\/\//i.test(url)) { alert('Please enter a valid absolute http(s) URL.'); return; }
+    const profiles = load();
+    const existingIdx = profiles.findIndex(p => p && p.name === name);
+    const entry = { name, url };
+    if (existingIdx >= 0) profiles[existingIdx] = entry; else profiles.push(entry);
+    save(profiles); render();
+    urlEl.value = '{{ url_for("preferences", _external=True) }}?preferences={{ preferences_url_params|e }}';
+  }
+  render();
+  saveBtn.addEventListener('click', onSave);
+})();
+</script>
