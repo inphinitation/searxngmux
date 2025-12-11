@@ -66,12 +66,18 @@
   <label for="profile-name" style="display:block; margin-top:0.5rem;">Profile name</label>
   <input type="text" id="profile-name" placeholder="My Profile" style="width:100%; max-width:28rem;">
   <label for="profile-url" style="display:block; margin-top:0.5rem;">Profile URL</label>
-  <input type="url" id="profile-url" style="width:100%; max-width:48rem;" value="{{ url_for('preferences', _external=True) }}?preferences={{ preferences_url_params|e }}">
+  <input type="url" id="profile-url" class="profile-url" style="width:100%; max-width:48rem;" value="{{ url_for('preferences', _external=True) }}?preferences={{ preferences_url_params|e }}">
   <button id="profile-save" type="button" class="button" style="margin-top:0.5rem;">Save profile</button>
 </div>
 <div id="profile-list-container" style="margin-top:1rem;">
   <h4>Saved profiles</h4>
   <ul id="profile-list" style="list-style:none; padding-left:0;"></ul>
+</div>
+<hr>
+<div>
+  <button id="profile-export" type="button" class="button">Export</button>
+  <button id="profile-import" type="button" class="button">Import</button>
+  <input type="file" id="profile-import-file" accept="application/json" style="display:none">
 </div>
 <script>
 (function(){
@@ -81,6 +87,9 @@
   const nameEl = document.getElementById('profile-name');
   const urlEl = document.getElementById('profile-url');
   const saveBtn = document.getElementById('profile-save');
+  const exportBtn = document.getElementById('profile-export');
+  const importBtn = document.getElementById('profile-import');
+  const importFileEl = document.getElementById('profile-import-file');
 
   function load() {
     try { return JSON.parse(localStorage.getItem(key) || '[]'); }
@@ -92,8 +101,10 @@
     listEl.innerHTML = '';
     if (!profiles.length) {
       containerEl.style.display = 'none';
+      exportBtn.style.display = 'none';
       return;
     }
+    exportBtn.style.display = '';
     containerEl.style.display = '';
     profiles.forEach((p, idx)=>{
       if (!p || typeof p.name !== 'string' || typeof p.url !== 'string') return;
@@ -129,7 +140,61 @@
     save(profiles); render();
     urlEl.value = '{{ url_for("preferences", _external=True) }}?preferences={{ preferences_url_params|e }}';
   }
+  function onExport(){
+    const profiles = load();
+    if (!profiles.length) { alert('No profiles to export.'); return; }
+    const json = JSON.stringify(profiles, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'searxng_profiles.json';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function onImport(){
+    importFileEl.click();
+  }
+  function onImportFile(ev){
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (!Array.isArray(imported)) { throw new Error('Invalid format: not an array.'); }
+        const profiles = load();
+        let added = 0;
+        let replaced = 0;
+        for(const p of imported) {
+          if (!p || typeof p.name !== 'string' || !p.name.trim() || typeof p.url !== 'string' || !p.url.trim()) continue;
+          const existingIdx = profiles.findIndex(x => x && x.name === p.name);
+          if (existingIdx >= 0) {
+            profiles[existingIdx] = p;
+            replaced++;
+          } else {
+            profiles.push(p);
+            added++;
+          }
+        }
+        save(profiles);
+        render();
+        alert(`Imported ${added} and replaced ${replaced} profiles.`);
+      } catch(err) {
+        alert('Error importing profiles: ' + err.message);
+      } finally {
+        importFileEl.value = '';
+      }
+    };
+    reader.readAsText(file);
+  }
   render();
   saveBtn.addEventListener('click', onSave);
+  exportBtn.addEventListener('click', onExport);
+  importBtn.addEventListener('click', onImport);
+  importFileEl.addEventListener('change', onImportFile);
 })();
 </script>
