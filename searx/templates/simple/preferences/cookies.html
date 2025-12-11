@@ -66,7 +66,7 @@
   <label for="profile-name" style="display:block; margin-top:0.5rem;">Profile name</label>
   <input type="text" id="profile-name" placeholder="My Profile" style="width:100%; max-width:28rem;">
   <label for="profile-url" style="display:block; margin-top:0.5rem;">Profile URL</label>
-  <input type="url" id="profile-url" class="profile-url" style="width:100%; max-width:48rem;" value="{{ url_for('preferences', _external=True) }}?preferences={{ preferences_url_params|e }}">
+  <input type="url" id="profile-url" style="width:100%; max-width:48rem;" value="{{ url_for('preferences', _external=True) }}?preferences={{ preferences_url_params|e }}">
   <button id="profile-save" type="button" class="button" style="margin-top:0.5rem;">Save profile</button>
 </div>
 <div id="profile-list-container" style="margin-top:1rem;">
